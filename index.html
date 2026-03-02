@@ -39,7 +39,7 @@
     </script>
     
     <style>
-      .mindar-ui-overlay { pointer-events: none; } /* Stops the AR UI from blocking finger taps */
+      .mindar-ui-overlay { pointer-events: none; }
       #debug-ui {
         position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
         background: rgba(0,0,0,0.8); color: lime; padding: 10px 20px; border-radius: 8px;
@@ -62,85 +62,60 @@
         <a-asset-item id="lab-kit" src="./assets/titration_final.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;" raycaster="objects: .clickable"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity light="type: directional; intensity: 0.8;" position="1 1 1"></a-entity>
       <a-entity light="type: ambient; intensity: 0.5;"></a-entity>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-entity drag-rotate>
-            
             <a-gltf-model id="titration-setup" 
                           src="#lab-kit" 
                           scale="0.5 0.5 0.5" 
                           position="0 -0.5 0">
             </a-gltf-model>
-
-            <a-box id="interaction-hitbox" 
-                   class="clickable" 
-                   scale="2 3 2" 
-                   position="0 0.5 0" 
-                   color="red"
-                   material="opacity: 0.3; transparent: true">
-            </a-box>
-
         </a-entity>
       </a-entity>
     </a-scene>
 
     <script>
       const setup = document.querySelector('#titration-setup');
-      const hitbox = document.querySelector('#interaction-hitbox');
       const debugUI = document.querySelector('#debug-ui');
       let dropCount = 0;
       let isAnimating = false;
 
-      // Flash message function
       function showDebug(msg) {
           debugUI.style.display = 'block';
           debugUI.innerText = msg;
           setTimeout(() => { debugUI.style.display = 'none'; }, 2000);
       }
 
-      // STEP A: Model Load & Name Verifier
       setup.addEventListener('model-loaded', () => {
          const mesh = setup.getObject3D('mesh');
          if (mesh) {
              const pinkLiquid = mesh.getObjectByName('Liquid_Pink');
-             if (pinkLiquid) {
-                 pinkLiquid.visible = false; 
-             } else {
-                 alert("CRITICAL ERROR: 'Liquid_Pink' not found in Blender file! Check spelling.");
-             }
-             
-             const clearLiquid = mesh.getObjectByName('Liquid_Clear');
-             if (!clearLiquid) {
-                 alert("CRITICAL ERROR: 'Liquid_Clear' not found in Blender file! Check spelling.");
-             }
+             if (pinkLiquid) pinkLiquid.visible = false; 
              showDebug("Model Loaded & Verified");
          }
       });
 
-      // STEP B: The Bulletproof Click Event
-      hitbox.addEventListener('click', () => {
-        if (isAnimating) return; // Ignore fast double-taps
+      // CHANGED TO 'click' SO IT DOES NOT FIGHT WITH THE ROTATION SCRIPT
+      window.addEventListener('click', () => {
+        if (isAnimating) return; 
         
         dropCount++;
         isAnimating = true;
         showDebug("TAP " + dropCount + " REGISTERED!");
 
-        // Fire the Blender Animation
         setup.removeAttribute('animation-mixer');
         setTimeout(() => {
             setup.setAttribute('animation-mixer', 'clip: *; loop: once; crossFadeDuration: 0;');
         }, 10);
 
-        // Function that runs when animation finishes
         const onAnimationFinish = function() {
           setup.removeEventListener('animation-finished', onAnimationFinish);
           isAnimating = false; 
 
-          // STEP C: 7-Click Color Swap
           if (dropCount === 7) {
             const mesh = setup.getObject3D('mesh');
             if (mesh) {
@@ -151,7 +126,6 @@
                 if (pinkLiquid) pinkLiquid.visible = true;    
             }
             
-            // Success Popup
             const alertBox = document.createElement('div');
             alertBox.innerHTML = "Equivalence Point Reached!";
             alertBox.style.cssText = "position:absolute; top:20%; left:50%; transform:translateX(-50%); background:white; padding:15px; border-radius:10px; font-family:sans-serif; font-weight:bold; color:#FF1493; z-index:9999; box-shadow: 0px 4px 6px rgba(0,0,0,0.4); text-align: center;";
@@ -160,18 +134,14 @@
           }
         };
 
-        // Listen for Blender to say "I'm done"
         setup.addEventListener('animation-finished', onAnimationFinish);
         
-        // FAILSAFE: If Blender animation is broken/missing, unlock system after 1.5 seconds anyway
         setTimeout(() => {
             if(isAnimating) {
                 isAnimating = false;
                 setup.removeEventListener('animation-finished', onAnimationFinish);
-                showDebug("Animation skipped/failed, but click counted.");
             }
         }, 1500); 
-
       });
     </script>
   </body>
