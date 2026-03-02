@@ -91,12 +91,32 @@
           setTimeout(() => { debugUI.style.display = 'none'; }, 2000);
       }
 
-      setup.addEventListener('model-loaded', () => {
+setup.addEventListener('model-loaded', () => {
          const mesh = setup.getObject3D('mesh');
          if (mesh) {
+             
+             // --- THE WEBGL TRANSPARENCY FIX ---
+             mesh.traverse((node) => {
+                 if (node.isMesh) {
+                     // 1. Force Liquids and Drop to be 100% Solid & Draw First
+                     if (node.name.includes('Liquid') || node.name.includes('Sphere')) {
+                         node.material.transparent = false;
+                         node.material.opacity = 1.0;
+                         node.material.depthWrite = true;
+                         node.material.renderOrder = 1;
+                     }
+                     // 2. Force Glass to let liquids show through & Draw Last
+                     else if (node.material.transparent || node.material.opacity < 1.0) {
+                         node.material.depthWrite = false;
+                         node.material.renderOrder = 2;
+                     }
+                 }
+             });
+             // -----------------------------------
+
              const pinkLiquid = mesh.getObjectByName('Liquid_Pink');
              if (pinkLiquid) pinkLiquid.visible = false; 
-             showDebug("Model Loaded & Verified");
+             showDebug("Model Loaded & Fixed");
          }
       });
 
