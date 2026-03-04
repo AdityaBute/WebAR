@@ -113,7 +113,9 @@
       <a-entity light="type: directional; intensity: 1.5; color: #ffffff;" position="1 2 1"></a-entity>
       <a-entity light="type: directional; intensity: 0.5; color: #e0f7fa;" position="-1 0.5 -1"></a-entity>
 
-      <a-entity id="image-target" mindar-image-target="targetIndex: 0">
+      <a-entity id="image-target" mindar-image-target="targetIndex: 0"></a-entity>
+
+      <a-entity id="tracker-wrapper" visible="false">
           <a-entity id="model-wrapper" custom-controls>
               <a-gltf-model id="titration-setup" 
                             src="#lab-kit" 
@@ -128,14 +130,13 @@
     <script>
       const setup = document.querySelector('#titration-setup');
       const target = document.querySelector('#image-target');
-      const wrapper = document.querySelector('#model-wrapper');
+      const wrapper = document.querySelector('#tracker-wrapper');
       const camera = document.querySelector('#ar-camera');
       
       let dropCount = 0;
       let isAnimating = false;
-      let isUnlocked = false;
 
-      // 1. SHADER FIXES
+      // 1. SHADER FIXES (Punches liquid through the glass)
       setup.addEventListener('model-loaded', () => {
          const mesh = setup.getObject3D('mesh');
          if (mesh) {
@@ -161,24 +162,35 @@
          }
       });
 
-      // 2. THE STICKY AR TRANSFER
+      // 2. THE BULLETPROOF EVENT LISTENERS
       target.addEventListener('targetFound', () => {
-          if (!isUnlocked) {
-              isUnlocked = true;
-              window.showDebug("Model Locked to Screen!");
-              
-              // The Three.js Native Transfer: Hands the 3D model to the camera without breaking the DOM
-              camera.object3D.attach(wrapper.object3D);
+          // Glue the model to the target paper
+          target.object3D.add(wrapper.object3D);
+          wrapper.object3D.position.set(0, 0, 0);
+          wrapper.object3D.rotation.set(0, 0, 0);
+          
+          // Force visibility ON
+          wrapper.setAttribute('visible', true);
+          window.showDebug("Target Found! Glued to paper.");
+      });
 
-              // Position it exactly in front of the lens
-              wrapper.object3D.position.set(0, -0.5, -3);
-              wrapper.object3D.rotation.set(0, 0, 0);
-          }
+      target.addEventListener('targetLost', () => {
+          // Rescue the model from the target and glue it directly to the camera
+          camera.object3D.add(wrapper.object3D);
+          
+          // Push it exactly 3 meters in front of the lens
+          wrapper.object3D.position.set(0, -0.5, -3);
+          wrapper.object3D.rotation.set(0, 0, 0);
+          
+          // Force visibility ON again (Bypassing MindAR's hiding sequence)
+          wrapper.setAttribute('visible', true);
+          window.showDebug("Target Lost! Locked to Screen.");
       });
 
       // 3. TAP TO ANIMATE
       window.addEventListener('click', () => {
-        if (isAnimating || !isUnlocked) return; 
+        // Stop code if the model is currently hidden
+        if (isAnimating || wrapper.getAttribute('visible') === false) return; 
         
         dropCount++;
         isAnimating = true;
