@@ -20,52 +20,6 @@
     </script>
 
     <script>
-      AFRAME.registerComponent('proxy-tracker', {
-        tick: function () {
-          const target = document.querySelector('#image-target');
-          const wrapper = document.querySelector('#tracker-wrapper');
-          const camera = document.querySelector('a-camera');
-          
-          if (!target || !wrapper || !camera) return;
-
-          // SCENARIO A: The camera can see the paper
-          if (target.object3D.visible) {
-            
-            // Safely turn the model on
-            if (wrapper.getAttribute('visible') === false || !wrapper.object3D.visible) {
-              wrapper.setAttribute('visible', true);
-              wrapper.object3D.visible = true;
-              window.showDebug("Model Locked! You can remove the paper.");
-            }
-
-            // Copy the exact coordinates of the paper
-            wrapper.object3D.position.copy(target.object3D.position);
-            wrapper.object3D.quaternion.copy(target.object3D.quaternion);
-            wrapper.object3D.scale.copy(target.object3D.scale);
-          }
-          
-          // SCENARIO B: The paper is removed (The Heads-Up Display Mode)
-          else if (wrapper.object3D.visible) {
-            
-            // CRITICAL FIX: Force the engine to update camera coordinates before teleporting
-            camera.object3D.updateMatrixWorld(); 
-
-            // Calculate a spot exactly 3 meters in front of the lens
-            let offset = new THREE.Vector3(0, -0.5, -3);
-            offset.applyMatrix4(camera.object3D.matrixWorld);
-
-            // Teleport model there and make it face the camera
-            wrapper.object3D.position.copy(offset);
-            wrapper.object3D.quaternion.copy(camera.object3D.quaternion);
-            
-            // Lock scale to a normal size so it doesn't warp
-            wrapper.object3D.scale.set(1, 1, 1);
-          }
-        }
-      });
-    </script>
-
-    <script>
       AFRAME.registerComponent('custom-controls', {
         schema: { 
           rotationSpeed: { default: 1 },
@@ -147,22 +101,19 @@
              color-space="sRGB" 
              renderer="colorManagement: true, physicallyCorrectLights: true, antialias: true, sortObjects: true" 
              vr-mode-ui="enabled: false" 
-             device-orientation-permission-ui="enabled: false"
-             proxy-tracker>
+             device-orientation-permission-ui="enabled: false">
       
       <a-assets>
         <a-asset-item id="lab-kit" src="./assets/titration_final.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera id="ar-camera" position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity light="type: ambient; intensity: 1.2; color: #ffffff;"></a-entity>
       <a-entity light="type: directional; intensity: 1.5; color: #ffffff;" position="1 2 1"></a-entity>
       <a-entity light="type: directional; intensity: 0.5; color: #e0f7fa;" position="-1 0.5 -1"></a-entity>
 
-      <a-entity id="image-target" mindar-image-target="targetIndex: 0"></a-entity>
-
-      <a-entity id="tracker-wrapper" visible="false">
+      <a-entity id="image-target" mindar-image-target="targetIndex: 0">
           <a-entity id="model-wrapper" custom-controls>
               <a-gltf-model id="titration-setup" 
                             src="#lab-kit" 
@@ -176,10 +127,15 @@
 
     <script>
       const setup = document.querySelector('#titration-setup');
+      const target = document.querySelector('#image-target');
+      const wrapper = document.querySelector('#model-wrapper');
+      const camera = document.querySelector('#ar-camera');
+      
       let dropCount = 0;
       let isAnimating = false;
+      let isUnlocked = false;
 
-      // SHADER FIXES
+      // 1. SHADER FIXES
       setup.addEventListener('model-loaded', () => {
          const mesh = setup.getObject3D('mesh');
          if (mesh) {
@@ -205,11 +161,24 @@
          }
       });
 
-      // TAP TO ANIMATE
+      // 2. THE STICKY AR TRANSFER
+      target.addEventListener('targetFound', () => {
+          if (!isUnlocked) {
+              isUnlocked = true;
+              window.showDebug("Model Locked to Screen!");
+              
+              // The Three.js Native Transfer: Hands the 3D model to the camera without breaking the DOM
+              camera.object3D.attach(wrapper.object3D);
+
+              // Position it exactly in front of the lens
+              wrapper.object3D.position.set(0, -0.5, -3);
+              wrapper.object3D.rotation.set(0, 0, 0);
+          }
+      });
+
+      // 3. TAP TO ANIMATE
       window.addEventListener('click', () => {
-        const outerWrapper = document.querySelector('#tracker-wrapper');
-        // Prevent tapping before the model is actually visible
-        if (isAnimating || !outerWrapper || !outerWrapper.object3D.visible) return; 
+        if (isAnimating || !isUnlocked) return; 
         
         dropCount++;
         isAnimating = true;
