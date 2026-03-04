@@ -9,45 +9,57 @@
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
     <script>
+      window.showDebug = function(msg) {
+          const debugUI = document.querySelector('#debug-ui');
+          if (debugUI) {
+              debugUI.style.display = 'block';
+              debugUI.innerText = msg;
+              setTimeout(() => { debugUI.style.display = 'none'; }, 3000);
+          }
+      };
+    </script>
+
+    <script>
       AFRAME.registerComponent('proxy-tracker', {
-        init: function () {
-          this.isUnlocked = false;
-          this.cameraObj = document.querySelector('a-camera').object3D;
-          this.targetObj = document.querySelector('#tracker-wrapper').object3D;
-          // Set the hover distance: 0 left/right, 0.5 down, 3 meters forward
-          this.localOffset = new THREE.Vector3(0, -0.5, -3); 
-        },
         tick: function () {
           const target = document.querySelector('#image-target');
+          const wrapper = document.querySelector('#tracker-wrapper');
+          const camera = document.querySelector('a-camera');
+          
+          if (!target || !wrapper || !camera) return;
 
           // SCENARIO A: The camera can see the paper
-          if (target && target.object3D.visible) {
-            if (!this.isUnlocked) {
-              this.isUnlocked = true;
-              this.targetObj.visible = true;
-              const debugUI = document.querySelector('#debug-ui');
-              debugUI.style.display = 'block';
-              debugUI.innerText = "Model Unlocked! Remove the paper.";
-              setTimeout(() => { debugUI.style.display = 'none'; }, 3000);
+          if (target.object3D.visible) {
+            
+            // Safely turn the model on
+            if (wrapper.getAttribute('visible') === false || !wrapper.object3D.visible) {
+              wrapper.setAttribute('visible', true);
+              wrapper.object3D.visible = true;
+              window.showDebug("Model Locked! You can remove the paper.");
             }
-            // Glue the model to the paper
-            this.targetObj.position.copy(target.object3D.position);
-            this.targetObj.quaternion.copy(target.object3D.quaternion);
-            this.targetObj.scale.copy(target.object3D.scale);
+
+            // Copy the exact coordinates of the paper
+            wrapper.object3D.position.copy(target.object3D.position);
+            wrapper.object3D.quaternion.copy(target.object3D.quaternion);
+            wrapper.object3D.scale.copy(target.object3D.scale);
           }
           
-          // SCENARIO B: The paper is removed
-          else if (this.isUnlocked) {
-            // Calculate a point exactly 3 meters in front of the phone camera
-            let offset = this.localOffset.clone();
-            offset.applyMatrix4(this.cameraObj.matrixWorld);
-
-            // Teleport the model there and make it face the user
-            this.targetObj.position.copy(offset);
-            this.targetObj.quaternion.copy(this.cameraObj.quaternion);
+          // SCENARIO B: The paper is removed (The Heads-Up Display Mode)
+          else if (wrapper.object3D.visible) {
             
-            // Standardize the scale so it doesn't warp
-            this.targetObj.scale.set(1, 1, 1);
+            // CRITICAL FIX: Force the engine to update camera coordinates before teleporting
+            camera.object3D.updateMatrixWorld(); 
+
+            // Calculate a spot exactly 3 meters in front of the lens
+            let offset = new THREE.Vector3(0, -0.5, -3);
+            offset.applyMatrix4(camera.object3D.matrixWorld);
+
+            // Teleport model there and make it face the camera
+            wrapper.object3D.position.copy(offset);
+            wrapper.object3D.quaternion.copy(camera.object3D.quaternion);
+            
+            // Lock scale to a normal size so it doesn't warp
+            wrapper.object3D.scale.set(1, 1, 1);
           }
         }
       });
@@ -164,16 +176,10 @@
 
     <script>
       const setup = document.querySelector('#titration-setup');
-      const debugUI = document.querySelector('#debug-ui');
       let dropCount = 0;
       let isAnimating = false;
 
-      function showDebug(msg) {
-          debugUI.style.display = 'block';
-          debugUI.innerText = msg;
-          setTimeout(() => { debugUI.style.display = 'none'; }, 2000);
-      }
-
+      // SHADER FIXES
       setup.addEventListener('model-loaded', () => {
          const mesh = setup.getObject3D('mesh');
          if (mesh) {
@@ -199,9 +205,11 @@
          }
       });
 
+      // TAP TO ANIMATE
       window.addEventListener('click', () => {
         const outerWrapper = document.querySelector('#tracker-wrapper');
-        if (isAnimating || !outerWrapper.object3D.visible) return; 
+        // Prevent tapping before the model is actually visible
+        if (isAnimating || !outerWrapper || !outerWrapper.object3D.visible) return; 
         
         dropCount++;
         isAnimating = true;
@@ -235,7 +243,7 @@
         setup.addEventListener('animation-finished', onAnimationFinish);
         
         setTimeout(() => {
-            if(isAnimating) {
+            if (isAnimating) {
                 isAnimating = false;
                 setup.removeEventListener('animation-finished', onAnimationFinish);
             }
