@@ -8,81 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
-    <script>
-      window.showDebug = function(msg) {
-          const debugUI = document.querySelector('#debug-ui');
-          if (debugUI) {
-              debugUI.style.display = 'block';
-              debugUI.innerText = msg;
-              setTimeout(() => { debugUI.style.display = 'none'; }, 3000);
-          }
-      };
-    </script>
-
-    <script>
-      AFRAME.registerComponent('custom-controls', {
-        schema: { 
-          rotationSpeed: { default: 1 },
-          minScale: { default: 0.2 },
-          maxScale: { default: 4 }
-        },
-        init: function () {
-          this.isDragging = false;
-          this.x_cord = 0;
-          this.y_cord = 0;
-          this.initialDist = 0;
-          this.startScale = this.el.object3D.scale.clone();
-
-          document.addEventListener('touchstart', this.onTouchStart.bind(this));
-          document.addEventListener('touchend', this.onTouchEnd.bind(this));
-          document.addEventListener('touchmove', this.onTouchMove.bind(this));
-        },
-        onTouchStart: function (e) {
-          if (e.touches.length === 1) {
-            this.isDragging = true;
-            this.x_cord = e.touches[0].clientX;
-            this.y_cord = e.touches[0].clientY;
-          } else if (e.touches.length === 2) {
-            this.isDragging = false;
-            this.initialDist = this.getDist(e.touches);
-            this.startScale = this.el.object3D.scale.clone();
-          }
-        },
-        onTouchEnd: function () { 
-          this.isDragging = false; 
-        },
-        onTouchMove: function (e) {
-          if (this.isDragging && e.touches.length === 1) {
-            let temp_x = e.touches[0].clientX - this.x_cord;
-            let temp_y = e.touches[0].clientY - this.y_cord;
-            this.el.object3D.rotation.y += temp_x * this.data.rotationSpeed / 100;
-            this.el.object3D.rotation.x += temp_y * this.data.rotationSpeed / 100;
-            this.x_cord = e.touches[0].clientX;
-            this.y_cord = e.touches[0].clientY;
-          } else if (e.touches.length === 2) {
-            if (this.initialDist === 0) return;
-            let currentDist = this.getDist(e.touches);
-            let factor = currentDist / this.initialDist;
-            
-            let nx = this.startScale.x * factor;
-            let ny = this.startScale.y * factor;
-            let nz = this.startScale.z * factor;
-            
-            nx = Math.max(this.data.minScale, Math.min(this.data.maxScale, nx));
-            ny = Math.max(this.data.minScale, Math.min(this.data.maxScale, ny));
-            nz = Math.max(this.data.minScale, Math.min(this.data.maxScale, nz));
-            
-            this.el.object3D.scale.set(nx, ny, nz);
-          }
-        },
-        getDist: function(touches) {
-          let dx = touches[0].clientX - touches[1].clientX;
-          let dy = touches[0].clientY - touches[1].clientY;
-          return Math.sqrt(dx*dx + dy*dy);
-        }
-      });
-    </script>
-    
     <style>
       .mindar-ui-overlay { pointer-events: none; }
       #debug-ui {
@@ -107,126 +32,184 @@
         <a-asset-item id="lab-kit" src="./assets/titration_final.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera id="ar-camera" position="0 0 0" look-controls="enabled: false"></a-camera>
-
       <a-entity light="type: ambient; intensity: 1.2; color: #ffffff;"></a-entity>
       <a-entity light="type: directional; intensity: 1.5; color: #ffffff;" position="1 2 1"></a-entity>
       <a-entity light="type: directional; intensity: 0.5; color: #e0f7fa;" position="-1 0.5 -1"></a-entity>
 
-      <a-entity id="image-target" mindar-image-target="targetIndex: 0"></a-entity>
+      <a-camera id="ar-camera" position="0 0 0" look-controls="enabled: false">
+          <a-entity id="hud-model" visible="false" position="0 -0.5 -3">
+              <a-gltf-model class="titration-setup" src="#lab-kit" scale="0.5 0.5 0.5" position="0 0 0"></a-gltf-model>
+          </a-entity>
+      </a-camera>
 
-      <a-entity id="tracker-wrapper" visible="false">
-          <a-entity id="model-wrapper" custom-controls>
-              <a-gltf-model id="titration-setup" 
-                            src="#lab-kit" 
-                            scale="0.5 0.5 0.5" 
-                            position="0 -0.5 0">
-              </a-gltf-model>
+      <a-entity id="image-target" mindar-image-target="targetIndex: 0">
+          <a-entity id="target-model" visible="false" position="0 -0.5 0">
+              <a-gltf-model class="titration-setup" src="#lab-kit" scale="0.5 0.5 0.5" position="0 0 0"></a-gltf-model>
           </a-entity>
       </a-entity>
 
     </a-scene>
 
     <script>
-      const setup = document.querySelector('#titration-setup');
-      const target = document.querySelector('#image-target');
-      const wrapper = document.querySelector('#tracker-wrapper');
-      const camera = document.querySelector('#ar-camera');
+      const models = document.querySelectorAll('.titration-setup');
+      const hudWrapper = document.querySelector('#hud-model');
+      const targetWrapper = document.querySelector('#target-model');
+      const targetEntity = document.querySelector('#image-target');
       
       let dropCount = 0;
       let isAnimating = false;
+      let hasBeenScannedOnce = false;
 
-      // 1. SHADER FIXES (Punches liquid through the glass)
-      setup.addEventListener('model-loaded', () => {
-         const mesh = setup.getObject3D('mesh');
-         if (mesh) {
-             mesh.traverse((node) => {
-                 if (node.isMesh && node.material) {
-                     if (node.name.includes('Liquid') || node.name.includes('Sphere')) {
-                         node.material.transparent = false;
-                         node.material.opacity = 1.0;
-                         node.material.depthWrite = true;
-                         node.material.renderOrder = 1;
-                         if (node.material.transmission !== undefined) node.material.transmission = 0;
-                         node.material.needsUpdate = true; 
+      function showDebug(msg) {
+          const debugUI = document.querySelector('#debug-ui');
+          debugUI.style.display = 'block';
+          debugUI.innerText = msg;
+          setTimeout(() => { debugUI.style.display = 'none'; }, 3000);
+      }
+
+      // 1. SHADER FIXES (Applies to both models so they are perfectly identical)
+      models.forEach(setup => {
+          setup.addEventListener('model-loaded', () => {
+             const mesh = setup.getObject3D('mesh');
+             if (mesh) {
+                 mesh.traverse((node) => {
+                     if (node.isMesh && node.material) {
+                         if (node.name.includes('Liquid') || node.name.includes('Sphere')) {
+                             node.material.transparent = false;
+                             node.material.opacity = 1.0;
+                             node.material.depthWrite = true;
+                             node.material.renderOrder = 1;
+                             if (node.material.transmission !== undefined) node.material.transmission = 0;
+                             node.material.needsUpdate = true; 
+                         }
+                         else if (node.material.transparent || node.material.opacity < 1.0) {
+                             node.material.depthWrite = false;
+                             node.material.renderOrder = 2;
+                             node.material.needsUpdate = true;
+                         }
                      }
-                     else if (node.material.transparent || node.material.opacity < 1.0) {
-                         node.material.depthWrite = false;
-                         node.material.renderOrder = 2;
-                         node.material.needsUpdate = true;
-                     }
-                 }
-             });
-             const pinkLiquid = mesh.getObjectByName('Liquid_Pink');
-             if (pinkLiquid) pinkLiquid.visible = false; 
-         }
+                 });
+                 const pinkLiquid = mesh.getObjectByName('Liquid_Pink');
+                 if (pinkLiquid) pinkLiquid.visible = false; 
+             }
+          });
       });
 
-      // 2. THE BULLETPROOF EVENT LISTENERS
-      target.addEventListener('targetFound', () => {
-          // Glue the model to the target paper
-          target.object3D.add(wrapper.object3D);
-          wrapper.object3D.position.set(0, 0, 0);
-          wrapper.object3D.rotation.set(0, 0, 0);
-          
-          // Force visibility ON
-          wrapper.setAttribute('visible', true);
-          window.showDebug("Target Found! Glued to paper.");
+      // 2. THE ILLUSION (Swapping visibility instantly)
+      targetEntity.addEventListener('targetFound', () => {
+          hasBeenScannedOnce = true;
+          targetWrapper.setAttribute('visible', true);
+          hudWrapper.setAttribute('visible', false);
+          showDebug("Locked to Paper!");
       });
 
-      target.addEventListener('targetLost', () => {
-          // Rescue the model from the target and glue it directly to the camera
-          camera.object3D.add(wrapper.object3D);
-          
-          // Push it exactly 3 meters in front of the lens
-          wrapper.object3D.position.set(0, -0.5, -3);
-          wrapper.object3D.rotation.set(0, 0, 0);
-          
-          // Force visibility ON again (Bypassing MindAR's hiding sequence)
-          wrapper.setAttribute('visible', true);
-          window.showDebug("Target Lost! Locked to Screen.");
+      targetEntity.addEventListener('targetLost', () => {
+          if (hasBeenScannedOnce) {
+              targetWrapper.setAttribute('visible', false);
+              hudWrapper.setAttribute('visible', true);
+              showDebug("Locked to Screen!");
+          }
       });
 
-      // 3. TAP TO ANIMATE
+      // 3. GLOBAL TOUCH CONTROLS (Applies rotation and zoom to BOTH wrappers simultaneously)
+      let isDragging = false;
+      let lastX = 0, lastY = 0;
+      let initialDist = 0;
+      let currentScale = 1; 
+
+      function getDist(touches) {
+          let dx = touches[0].clientX - touches[1].clientX;
+          let dy = touches[0].clientY - touches[1].clientY;
+          return Math.sqrt(dx*dx + dy*dy);
+      }
+
+      window.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 1) {
+              isDragging = true;
+              lastX = e.touches[0].clientX;
+              lastY = e.touches[0].clientY;
+          } else if (e.touches.length === 2) {
+              isDragging = false;
+              initialDist = getDist(e.touches);
+          }
+      });
+
+      window.addEventListener('touchend', () => { isDragging = false; });
+
+      window.addEventListener('touchmove', (e) => {
+          // ROTATE
+          if (isDragging && e.touches.length === 1) {
+              let deltaX = e.touches[0].clientX - lastX;
+              let deltaY = e.touches[0].clientY - lastY;
+              
+              [hudWrapper, targetWrapper].forEach(el => {
+                  el.object3D.rotation.y += deltaX * 0.01;
+                  el.object3D.rotation.x += deltaY * 0.01;
+              });
+
+              lastX = e.touches[0].clientX;
+              lastY = e.touches[0].clientY;
+          } 
+          // ZOOM
+          else if (e.touches.length === 2 && initialDist > 0) {
+              let currentDist = getDist(e.touches);
+              let scaleFactor = currentDist / initialDist;
+              let newScale = currentScale * scaleFactor;
+              
+              newScale = Math.max(0.5, Math.min(3, newScale)); // Limits zoom size
+              
+              [hudWrapper, targetWrapper].forEach(el => {
+                  el.object3D.scale.set(newScale, newScale, newScale);
+              });
+              
+              currentScale = newScale;
+              initialDist = currentDist; // Reset for smooth continuous zoom
+          }
+      });
+
+      // 4. TAP TO ANIMATE (Fires on both models simultaneously)
       window.addEventListener('click', () => {
-        // Stop code if the model is currently hidden
-        if (isAnimating || wrapper.getAttribute('visible') === false) return; 
+        if (isAnimating || !hasBeenScannedOnce) return; 
         
         dropCount++;
         isAnimating = true;
 
-        setup.removeAttribute('animation-mixer');
-        setTimeout(() => {
-            setup.setAttribute('animation-mixer', 'clip: *; loop: once; crossFadeDuration: 0;');
-        }, 10);
+        models.forEach(setup => {
+            setup.removeAttribute('animation-mixer');
+            setTimeout(() => {
+                setup.setAttribute('animation-mixer', 'clip: *; loop: once; crossFadeDuration: 0;');
+            }, 10);
+        });
 
         const onAnimationFinish = function() {
-          setup.removeEventListener('animation-finished', onAnimationFinish);
+          models[0].removeEventListener('animation-finished', onAnimationFinish);
           isAnimating = false; 
 
           if (dropCount === 7) {
-            const mesh = setup.getObject3D('mesh');
-            if (mesh) {
-                const clearLiquid = mesh.getObjectByName('Liquid_Clear');
-                const pinkLiquid = mesh.getObjectByName('Liquid_Pink');
-                if (clearLiquid) clearLiquid.visible = false; 
-                if (pinkLiquid) pinkLiquid.visible = true;    
-            }
+              models.forEach(setup => {
+                  const mesh = setup.getObject3D('mesh');
+                  if (mesh) {
+                      const clearLiquid = mesh.getObjectByName('Liquid_Clear');
+                      const pinkLiquid = mesh.getObjectByName('Liquid_Pink');
+                      if (clearLiquid) clearLiquid.visible = false; 
+                      if (pinkLiquid) pinkLiquid.visible = true;    
+                  }
+              });
             
-            const alertBox = document.createElement('div');
-            alertBox.innerHTML = "Equivalence Point Reached!";
-            alertBox.style.cssText = "position:absolute; top:20%; left:50%; transform:translateX(-50%); background:white; padding:15px; border-radius:10px; font-family:sans-serif; font-weight:bold; color:#FF1493; z-index:9999; box-shadow: 0px 4px 6px rgba(0,0,0,0.4); text-align: center;";
-            document.body.appendChild(alertBox);
-            setTimeout(() => alertBox.remove(), 4000);
+              const alertBox = document.createElement('div');
+              alertBox.innerHTML = "Equivalence Point Reached!";
+              alertBox.style.cssText = "position:absolute; top:20%; left:50%; transform:translateX(-50%); background:white; padding:15px; border-radius:10px; font-family:sans-serif; font-weight:bold; color:#FF1493; z-index:9999; box-shadow: 0px 4px 6px rgba(0,0,0,0.4); text-align: center;";
+              document.body.appendChild(alertBox);
+              setTimeout(() => alertBox.remove(), 4000);
           }
         };
 
-        setup.addEventListener('animation-finished', onAnimationFinish);
+        models[0].addEventListener('animation-finished', onAnimationFinish);
         
         setTimeout(() => {
             if (isAnimating) {
                 isAnimating = false;
-                setup.removeEventListener('animation-finished', onAnimationFinish);
+                models[0].removeEventListener('animation-finished', onAnimationFinish);
             }
         }, 1500); 
       });
