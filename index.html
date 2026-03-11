@@ -57,14 +57,14 @@
       }
 
       .menu-btn:hover, .menu-btn:active {
-        background: rgba(255, 20, 147, 0.3); /* Pink glow on tap */
+        background: rgba(255, 20, 147, 0.3);
         border-color: rgba(255, 20, 147, 0.6);
         transform: scale(0.98);
       }
 
       .menu-btn .icon { font-size: 24px; margin-right: 12px; }
 
-      /* The Back Button (Floats top left) */
+      /* The Back Button */
       #back-btn {
         position: absolute;
         top: 20px;
@@ -100,7 +100,7 @@
 
   <body>
 
-    <button id="back-btn">← Menu</button>
+    <button id="back-btn">← Back to Scanner</button>
     <div id="success-popup">Equivalence Point Reached!</div>
     
     <div id="ar-menu">
@@ -132,9 +132,13 @@
       <a-entity light="type: directional; intensity: 0.5; color: #e0f7fa;" position="-1 0.5 -1"></a-entity>
 
       <a-camera id="ar-camera" position="0 0 0" look-controls="enabled: false">
+          
           <a-entity id="hud-model" visible="false" position="0 -0.5 -3">
               <a-gltf-model class="titration-setup" src="#lab-kit" scale="0.5 0.5 0.5" position="0 0 0"></a-gltf-model>
           </a-entity>
+          
+          <a-video id="hud-video" src="#titration-vid" position="0 0 -3" scale="3 1.6875 3" visible="false"></a-video>
+          
       </a-camera>
 
       <a-entity id="image-target" mindar-image-target="targetIndex: 0">
@@ -159,11 +163,16 @@
       const btnVideo = document.getElementById('btn-video');
       
       const targetEntity = document.querySelector('#image-target');
+      
+      // 3D Model Clones
       const hudWrapper = document.querySelector('#hud-model');
       const targetWrapper = document.querySelector('#target-model');
-      const arVideo = document.querySelector('#ar-video');
-      const vidAsset = document.querySelector('#titration-vid');
       const models = document.querySelectorAll('.titration-setup');
+
+      // Video Clones
+      const targetVideo = document.querySelector('#ar-video');
+      const hudVideo = document.querySelector('#hud-video');
+      const vidAsset = document.querySelector('#titration-vid');
 
       // State Variables
       let activeExperience = null; // null, '3d', or 'video'
@@ -171,7 +180,7 @@
       let dropCount = 0;
       let isAnimating = false;
 
-      // 1. SHADER FIXES (Keeps Pink Liquid Solid)
+      // 1. SHADER FIXES
       models.forEach(setup => {
           setup.addEventListener('model-loaded', () => {
              const mesh = setup.getObject3D('mesh');
@@ -203,31 +212,30 @@
           isTargetVisible = true;
           
           if (!activeExperience) {
-              // Show Menu if no choice made yet
               arMenu.classList.add('visible');
           } else if (activeExperience === '3d') {
-              // User returns to paper while 3D is active
+              // Glue 3D to paper
               targetWrapper.setAttribute('visible', true);
               hudWrapper.setAttribute('visible', false);
           } else if (activeExperience === 'video') {
-              // User returns to paper while Video is active
-              arVideo.setAttribute('visible', true);
-              vidAsset.play();
+              // Glue Video to paper
+              targetVideo.setAttribute('visible', true);
+              hudVideo.setAttribute('visible', false);
           }
       });
 
       targetEntity.addEventListener('targetLost', () => {
           isTargetVisible = false;
-          arMenu.classList.remove('visible'); // Hide menu if they look away
+          arMenu.classList.remove('visible'); // Hide menu if they pull paper away early
           
           if (activeExperience === '3d') {
-              // Sticky AR: Swap to HUD
+              // Swap 3D to HUD Screen
               targetWrapper.setAttribute('visible', false);
               hudWrapper.setAttribute('visible', true);
           } else if (activeExperience === 'video') {
-              // Pause video if target is lost
-              arVideo.setAttribute('visible', false);
-              vidAsset.pause();
+              // Swap Video to HUD Screen (Does NOT pause video)
+              targetVideo.setAttribute('visible', false);
+              hudVideo.setAttribute('visible', true);
           }
       });
 
@@ -239,9 +247,7 @@
           
           if (isTargetVisible) {
               targetWrapper.setAttribute('visible', true);
-              hudWrapper.setAttribute('visible', false);
           } else {
-              targetWrapper.setAttribute('visible', false);
               hudWrapper.setAttribute('visible', true);
           }
       });
@@ -252,22 +258,29 @@
           backBtn.classList.add('visible');
           
           if (isTargetVisible) {
-              arVideo.setAttribute('visible', true);
-              vidAsset.play();
+              targetVideo.setAttribute('visible', true);
+          } else {
+              hudVideo.setAttribute('visible', true);
           }
+          vidAsset.play();
       });
 
+      // 4. THE BACK BUTTON (Master Reset)
       backBtn.addEventListener('click', () => {
           activeExperience = null;
           backBtn.classList.remove('visible');
           
-          // Hide everything & pause video
+          // Hide everything
           targetWrapper.setAttribute('visible', false);
           hudWrapper.setAttribute('visible', false);
-          arVideo.setAttribute('visible', false);
-          vidAsset.pause();
+          targetVideo.setAttribute('visible', false);
+          hudVideo.setAttribute('visible', false);
           
-          // Reset 3D Model drops
+          // Pause and Rewind Video
+          vidAsset.pause();
+          vidAsset.currentTime = 0;
+          
+          // Reset 3D Model Drops
           dropCount = 0;
           models.forEach(setup => {
              const mesh = setup.getObject3D('mesh');
@@ -279,11 +292,13 @@
              }
           });
 
-          // Show menu if still looking at paper
-          if (isTargetVisible) arMenu.classList.add('visible');
+          // Show menu immediately if still looking at paper
+          if (isTargetVisible) {
+              arMenu.classList.add('visible');
+          }
       });
 
-      // 4. TOUCH CONTROLS (Only affects 3D model)
+      // 5. TOUCH CONTROLS (Only affects 3D model)
       let isDragging = false;
       let lastX = 0, lastY = 0;
       let initialDist = 0;
@@ -296,7 +311,7 @@
       }
 
       window.addEventListener('touchstart', (e) => {
-          if (activeExperience !== '3d') return; // Ignore if on video
+          if (activeExperience !== '3d') return; 
           
           if (e.touches.length === 1 && e.target.tagName !== 'BUTTON') {
               isDragging = true;
@@ -336,9 +351,8 @@
           }
       });
 
-      // 5. TAP TO ANIMATE (Only for 3D model)
+      // 6. TAP TO ANIMATE (Only for 3D model)
       window.addEventListener('click', (e) => {
-        // Ignore clicks on UI buttons or if video is active
         if (activeExperience !== '3d' || isAnimating || e.target.tagName === 'BUTTON') return; 
         
         dropCount++;
