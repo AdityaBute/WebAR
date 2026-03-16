@@ -30,7 +30,7 @@
          ========================================= */
       #custom-loader {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        box-sizing: border-box; /* Fixes the off-center bug */
+        box-sizing: border-box; 
         background: var(--bg-deep); z-index: 99999;
         display: flex; flex-direction: column; justify-content: center; align-items: center;
         transition: opacity 0.8s ease; padding: 0 20px;
@@ -40,7 +40,7 @@
         font-family: 'Pinyon Script', cursive; 
         font-size: clamp(3.5rem, 12vw, 4.5rem); 
         color: var(--liquid-gold);
-        margin: 0 0 10vh 0; /* Pushes the text higher up the screen */
+        margin: 0 0 10vh 0; 
         padding: 0; width: 100%; text-align: center;
         text-shadow: 0 0 20px rgba(212, 175, 105, 0.5);
         animation: pulseText 2s infinite alternate;
@@ -53,7 +53,7 @@
         border-top: 3px solid var(--liquid-gold); border-radius: 50%;
         animation: spin 1s cubic-bezier(0.25, 1, 0.5, 1) infinite;
         box-shadow: 0 0 20px rgba(212, 175, 105, 0.4);
-        margin: 0 0 4vh 0; /* Space between spinner and text */
+        margin: 0 0 4vh 0; 
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -166,7 +166,7 @@
              color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true, antialias: true, sortObjects: true" 
              vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
       
-      <a-assets timeout="2000">
+      <a-assets timeout="60000">
         <a-asset-item id="titration-model" src="./assets/titration_final.glb"></a-asset-item>
         <video id="titration-vid" src="./assets/titration_video.mp4" preload="none" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
         
@@ -230,7 +230,7 @@
 
     <script>
       // ==========================================
-      // LOADING SCREEN LOGIC (Lightning Fast)
+      // LOADING SCREEN LOGIC
       // ==========================================
       document.querySelector('a-scene').addEventListener('arReady', () => {
           const loader = document.getElementById('custom-loader');
@@ -251,7 +251,8 @@
       const menuTitle = document.getElementById('menu-title');
       const icon3D = document.getElementById('icon-3d');
       const iconVid = document.getElementById('icon-vid');
-      const text3D = document.getElementById('text3d');
+      // FIXED TYPO: This is what caused the crash!
+      const text3D = document.getElementById('text-3d'); 
       const textVid = document.getElementById('text-vid');
 
       const humanSubMenu = document.getElementById('human-sub-menu');
