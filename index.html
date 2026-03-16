@@ -101,20 +101,20 @@
              color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true, antialias: true, sortObjects: true" 
              vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
       
-      <a-assets>
+      <a-assets timeout="8000">
         <a-asset-item id="titration-model" src="./assets/titration_final.glb"></a-asset-item>
-        <video id="titration-vid" src="./assets/titration_video.mp4" preload="auto" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
+        <video id="titration-vid" src="./assets/titration_video.mp4" preload="none" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
         
         <a-asset-item id="solar-model" src="./assets/solar_system_animation.glb"></a-asset-item>
-        <video id="solar-vid" src="./assets/solar_video.mp4" preload="auto" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
+        <video id="solar-vid" src="./assets/solar_video.mp4" preload="none" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
 
         <a-asset-item id="human-angio" src="./assets/angiology.glb"></a-asset-item>
         <a-asset-item id="human-muscle" src="./assets/muscular_insertions.glb"></a-asset-item>
         <a-asset-item id="human-splanchno" src="./assets/splanchnology.glb"></a-asset-item>
-        <video id="human-vid" src="./assets/human_video.mp4" preload="auto" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
+        <video id="human-vid" src="./assets/human_video.mp4" preload="none" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
 
         <a-asset-item id="flower-model" src="./assets/anatomy_of_a_flower.glb"></a-asset-item>
-        <video id="flower-vid" src="./assets/flower_video.mp4" preload="auto" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
+        <video id="flower-vid" src="./assets/flower_video.mp4" preload="none" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -147,7 +147,9 @@
 
       <a-entity id="target-human" mindar-image-target="targetIndex: 2">
           <a-entity id="wrapper-human" visible="false" position="0 0 0">
-              <a-gltf-model id="setup-human" src="#human-angio" scale="0.2 0.2 0.2" position="0 0 0" animation-mixer></a-gltf-model>
+              <a-gltf-model id="model-angio" src="#human-angio" scale="0.15 0.15 0.15" position="0 0 0" visible="true" animation-mixer></a-gltf-model>
+              <a-gltf-model id="model-muscle" src="#human-muscle" scale="0.15 0.15 0.15" position="0 0 0" visible="false" animation-mixer></a-gltf-model>
+              <a-gltf-model id="model-splanchno" src="#human-splanchno" scale="0.15 0.15 0.15" position="0 0 0" visible="false" animation-mixer></a-gltf-model>
           </a-entity>
           <a-video id="ar-vid-human" src="#human-vid" position="0 0 0" scale="1 0.56 1" visible="false"></a-video>
       </a-entity>
@@ -197,7 +199,9 @@
       
       // Models & Videos
       const setupTitration = document.querySelector('#setup-titration');
-      const setupHuman = document.querySelector('#setup-human');
+      const modelAngio = document.querySelector('#model-angio');
+      const modelMuscle = document.querySelector('#model-muscle');
+      const modelSplanchno = document.querySelector('#model-splanchno');
       const liquidText = document.querySelector('#liquid-text');
       
       const vidTitrationEnt = document.querySelector('#ar-vid-titration');
@@ -211,15 +215,15 @@
       const vidAssetFlower = document.querySelector('#flower-vid');
 
       // State Variables
-      let activeTarget = null; // 'titration', 'solar', 'human', 'flower'
-      let activeExperience = null; // '3d' or 'video'
-      let activeWrapper = null; // Points to the active 3D wrapper for touch controls
+      let activeTarget = null; 
+      let activeExperience = null; 
+      let activeWrapper = null; 
       
       // Titration Variables
       let dropCount = 0;
       let isAnimating = false;
 
-      // 1. TITRATION SHADER FIXES (Keeps Pink Liquid Solid)
+      // 1. TITRATION SHADER FIXES
       setupTitration.addEventListener('model-loaded', () => {
          const mesh = setupTitration.getObject3D('mesh');
          if (mesh) {
@@ -244,8 +248,7 @@
          }
       });
 
-      // 2. SCANNING LOGIC (Dynamic Menu Switching)
-      
+      // 2. SCANNING LOGIC 
       targetTitration.addEventListener('targetFound', () => {
           activeTarget = 'titration';
           menuTitle.innerText = "Titration Lab";
@@ -277,7 +280,7 @@
           if (!activeExperience) { arMenu.classList.add('visible'); } 
           else if (activeExperience === '3d') { 
               wrapHuman.setAttribute('visible', true); activeWrapper = wrapHuman; 
-              humanSubMenu.classList.add('visible'); // Show Sub Menu
+              humanSubMenu.classList.add('visible'); 
           } 
           else if (activeExperience === 'video') { vidHumanEnt.setAttribute('visible', true); vidAssetHuman.play(); }
       });
@@ -293,7 +296,7 @@
           else if (activeExperience === 'video') { vidFlowerEnt.setAttribute('visible', true); vidAssetFlower.play(); }
       });
 
-      // Handle Target Loss (Safety Reset)
+      // Handle Target Loss
       const handleTargetLost = () => {
           activeTarget = null;
           activeWrapper = null;
@@ -333,15 +336,20 @@
           else if (activeTarget === 'flower') { vidFlowerEnt.setAttribute('visible', true); vidAssetFlower.play(); }
       });
 
-      // Human Anatomy Sub-Menu Logic
-      function switchHumanModel(modelId, activeBtn) {
-          setupHuman.setAttribute('src', modelId);
+      // Human Anatomy Sub-Menu Logic (Instant Visibility Swap)
+      function switchHumanModel(activeModelEnt, activeBtn) {
+          modelAngio.setAttribute('visible', false);
+          modelMuscle.setAttribute('visible', false);
+          modelSplanchno.setAttribute('visible', false);
+          
+          activeModelEnt.setAttribute('visible', true);
+          
           [btnAngio, btnMuscle, btnSplanchno].forEach(b => b.classList.remove('active'));
           activeBtn.classList.add('active');
       }
-      btnAngio.addEventListener('click', () => switchHumanModel('#human-angio', btnAngio));
-      btnMuscle.addEventListener('click', () => switchHumanModel('#human-muscle', btnMuscle));
-      btnSplanchno.addEventListener('click', () => switchHumanModel('#human-splanchno', btnSplanchno));
+      btnAngio.addEventListener('click', () => switchHumanModel(modelAngio, btnAngio));
+      btnMuscle.addEventListener('click', () => switchHumanModel(modelMuscle, btnMuscle));
+      btnSplanchno.addEventListener('click', () => switchHumanModel(modelSplanchno, btnSplanchno));
 
       // Back to Menu Button
       backBtn.addEventListener('click', () => {
@@ -350,7 +358,6 @@
           backBtn.classList.remove('visible');
           humanSubMenu.classList.remove('visible');
           
-          // Hide all wrappers and videos
           wrapTitration.setAttribute('visible', false);
           wrapSolar.setAttribute('visible', false);
           wrapHuman.setAttribute('visible', false);
@@ -361,11 +368,9 @@
           vidHumanEnt.setAttribute('visible', false);
           vidFlowerEnt.setAttribute('visible', false);
           
-          // Pause all videos
           vidAssetTitration.pause(); vidAssetSolar.pause(); vidAssetHuman.pause(); vidAssetFlower.pause();
           vidAssetTitration.currentTime = 0; vidAssetSolar.currentTime = 0; vidAssetHuman.currentTime = 0; vidAssetFlower.currentTime = 0;
           
-          // Reset Titration Drops & Labels
           dropCount = 0;
           const mesh = setupTitration.getObject3D('mesh');
           if (mesh) {
@@ -377,11 +382,10 @@
           liquidText.setAttribute('value', 'HCl + Phenolphthalein');
           liquidText.setAttribute('color', '#00BFFF');
 
-          // Show menu if still looking at a target
           if (activeTarget) arMenu.classList.add('visible');
       });
 
-      // 4. UNIVERSAL TOUCH CONTROLS (Pinch/Zoom/Rotate)
+      // 4. UNIVERSAL TOUCH CONTROLS
       let isDragging = false;
       let lastX = 0, lastY = 0;
       let initialDist = 0;
@@ -425,13 +429,13 @@
               let currentDist = getDist(e.touches);
               let scaleFactor = currentDist / initialDist;
               let newScale = currentScale * scaleFactor;
-              newScale = Math.max(0.05, Math.min(4, newScale)); // Adjusted min scale to 0.05 for large biological models
+              newScale = Math.max(0.05, Math.min(4, newScale)); 
               
               activeWrapper.object3D.scale.set(newScale, newScale, newScale);
           }
       });
 
-      // 5. TITRATION TAP-TO-ANIMATE LOGIC
+      // 5. TITRATION TAP-TO-ANIMATE
       window.addEventListener('click', (e) => {
         if (activeTarget !== 'titration' || activeExperience !== '3d' || isAnimating || e.target.tagName === 'BUTTON') return; 
         
