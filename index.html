@@ -46,6 +46,23 @@
         cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
       }
       #back-btn.visible { opacity: 1; pointer-events: auto; }
+
+      /* HUMAN ANATOMY SUB-MENU (Floating Pill) */
+      #human-sub-menu {
+        position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+        display: flex; gap: 8px; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        background: rgba(20, 20, 25, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        padding: 12px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.2);
+        flex-wrap: nowrap; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        width: max-content; max-width: 95%; overflow-x: auto;
+      }
+      #human-sub-menu.visible { opacity: 1; pointer-events: auto; }
+      .sub-btn {
+        background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 10px 15px; border-radius: 20px; font-size: 13px; font-weight: bold;
+        cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
+      }
+      .sub-btn.active, .sub-btn:hover { background: rgba(255, 20, 147, 0.6); border-color: rgba(255, 20, 147, 1); }
       
       /* Titration Success Popup */
       #success-popup {
@@ -62,6 +79,12 @@
   <body>
     <button id="back-btn">← Menu</button>
     <div id="success-popup">Equivalence Point Reached! pH = 7.0</div>
+    
+    <div id="human-sub-menu">
+        <button class="sub-btn active" id="btn-angio">Angiology</button>
+        <button class="sub-btn" id="btn-muscle">Muscular System</button>
+        <button class="sub-btn" id="btn-splanchno">Splanchnology</button>
+    </div>
     
     <div id="ar-menu">
       <h2 id="menu-title">Lab Environment</h2>
@@ -84,6 +107,14 @@
         
         <a-asset-item id="solar-model" src="./assets/solar_system_animation.glb"></a-asset-item>
         <video id="solar-vid" src="./assets/solar_video.mp4" preload="auto" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
+
+        <a-asset-item id="human-angio" src="./assets/angiology.glb"></a-asset-item>
+        <a-asset-item id="human-muscle" src="./assets/muscular_insertions.glb"></a-asset-item>
+        <a-asset-item id="human-splanchno" src="./assets/splanchnology.glb"></a-asset-item>
+        <video id="human-vid" src="./assets/human_video.mp4" preload="auto" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
+
+        <a-asset-item id="flower-model" src="./assets/anatomy_of_a_flower.glb"></a-asset-item>
+        <video id="flower-vid" src="./assets/flower_video.mp4" preload="auto" crossorigin="anonymous" loop="true" playsinline webkit-playsinline></video>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -93,31 +124,39 @@
       <a-entity light="type: directional; intensity: 0.5; color: #e0f7fa;" position="-1 0.5 -1"></a-entity>
 
       <a-entity id="target-titration" mindar-image-target="targetIndex: 0">
-          
           <a-entity id="wrapper-titration" visible="false" position="0 -0.5 0">
               <a-gltf-model id="setup-titration" src="#titration-model" scale="0.5 0.5 0.5" position="0 0 0"></a-gltf-model>
-
               <a-entity position="0.5 1.2 0">
                   <a-text value="Burette (Titrant)" color="white" width="4" align="left"></a-text>
                   <a-text value="Sodium Hydroxide (NaOH)" color="#FF1493" position="0 -0.15 0" width="3" align="left"></a-text>
               </a-entity>
-
               <a-entity position="0.5 0.2 0">
                   <a-text value="Flask (Analyte)" color="white" width="4" align="left"></a-text>
                   <a-text id="liquid-text" value="HCl + Phenolphthalein" color="#00BFFF" position="0 -0.15 0" width="3.5" align="left"></a-text>
               </a-entity>
           </a-entity>
-
           <a-video id="ar-vid-titration" src="#titration-vid" position="0 0 0" scale="1 0.56 1" visible="false"></a-video>
       </a-entity>
 
       <a-entity id="target-solar" mindar-image-target="targetIndex: 1">
-          
           <a-entity id="wrapper-solar" visible="false" position="0 0 0">
               <a-gltf-model id="setup-solar" src="#solar-model" scale="0.02 0.02 0.02" position="0 0 0" animation-mixer></a-gltf-model>
           </a-entity>
-
           <a-video id="ar-vid-solar" src="#solar-vid" position="0 0 0" scale="1 0.56 1" visible="false"></a-video>
+      </a-entity>
+
+      <a-entity id="target-human" mindar-image-target="targetIndex: 2">
+          <a-entity id="wrapper-human" visible="false" position="0 0 0">
+              <a-gltf-model id="setup-human" src="#human-angio" scale="0.2 0.2 0.2" position="0 0 0" animation-mixer></a-gltf-model>
+          </a-entity>
+          <a-video id="ar-vid-human" src="#human-vid" position="0 0 0" scale="1 0.56 1" visible="false"></a-video>
+      </a-entity>
+
+      <a-entity id="target-flower" mindar-image-target="targetIndex: 3">
+          <a-entity id="wrapper-flower" visible="false" position="0 0 0">
+              <a-gltf-model id="setup-flower" src="#flower-model" scale="0.2 0.2 0.2" position="0 0 0" animation-mixer></a-gltf-model>
+          </a-entity>
+          <a-video id="ar-vid-flower" src="#flower-vid" position="0 0 0" scale="1 0.56 1" visible="false"></a-video>
       </a-entity>
 
     </a-scene>
@@ -138,27 +177,45 @@
       const text3D = document.getElementById('text-3d');
       const textVid = document.getElementById('text-vid');
 
-      // Targets & Wrappers
+      // Human Sub-Menu Elements
+      const humanSubMenu = document.getElementById('human-sub-menu');
+      const btnAngio = document.getElementById('btn-angio');
+      const btnMuscle = document.getElementById('btn-muscle');
+      const btnSplanchno = document.getElementById('btn-splanchno');
+
+      // Targets
       const targetTitration = document.querySelector('#target-titration');
       const targetSolar = document.querySelector('#target-solar');
+      const targetHuman = document.querySelector('#target-human');
+      const targetFlower = document.querySelector('#target-flower');
       
+      // Wrappers
       const wrapTitration = document.querySelector('#wrapper-titration');
       const wrapSolar = document.querySelector('#wrapper-solar');
+      const wrapHuman = document.querySelector('#wrapper-human');
+      const wrapFlower = document.querySelector('#wrapper-flower');
       
+      // Models & Videos
       const setupTitration = document.querySelector('#setup-titration');
+      const setupHuman = document.querySelector('#setup-human');
       const liquidText = document.querySelector('#liquid-text');
       
       const vidTitrationEnt = document.querySelector('#ar-vid-titration');
       const vidSolarEnt = document.querySelector('#ar-vid-solar');
+      const vidHumanEnt = document.querySelector('#ar-vid-human');
+      const vidFlowerEnt = document.querySelector('#ar-vid-flower');
+
       const vidAssetTitration = document.querySelector('#titration-vid');
       const vidAssetSolar = document.querySelector('#solar-vid');
+      const vidAssetHuman = document.querySelector('#human-vid');
+      const vidAssetFlower = document.querySelector('#flower-vid');
 
       // State Variables
-      let activeTarget = null; // 'titration' or 'solar'
+      let activeTarget = null; // 'titration', 'solar', 'human', 'flower'
       let activeExperience = null; // '3d' or 'video'
-      let activeWrapper = null; // Points to the currently active 3D wrapper for touch controls
+      let activeWrapper = null; // Points to the active 3D wrapper for touch controls
       
-      // Titration Animation Variables
+      // Titration Variables
       let dropCount = 0;
       let isAnimating = false;
 
@@ -189,48 +246,51 @@
 
       // 2. SCANNING LOGIC (Dynamic Menu Switching)
       
-      // Titration Found
       targetTitration.addEventListener('targetFound', () => {
           activeTarget = 'titration';
-          
-          // Update Menu for Titration
           menuTitle.innerText = "Titration Lab";
-          icon3D.innerText = "🧪";
-          iconVid.innerText = "▶️";
-          text3D.innerText = "Interactive Titration";
-          textVid.innerText = "Watch Chemistry Video";
+          icon3D.innerText = "🧪"; iconVid.innerText = "▶️";
+          text3D.innerText = "Interactive Titration"; textVid.innerText = "Watch Chemistry Video";
 
-          if (!activeExperience) {
-              arMenu.classList.add('visible');
-          } else if (activeExperience === '3d') {
-              wrapTitration.setAttribute('visible', true);
-              activeWrapper = wrapTitration;
-          } else if (activeExperience === 'video') {
-              vidTitrationEnt.setAttribute('visible', true);
-              vidAssetTitration.play();
-          }
+          if (!activeExperience) { arMenu.classList.add('visible'); } 
+          else if (activeExperience === '3d') { wrapTitration.setAttribute('visible', true); activeWrapper = wrapTitration; } 
+          else if (activeExperience === 'video') { vidTitrationEnt.setAttribute('visible', true); vidAssetTitration.play(); }
       });
 
-      // Solar System Found
       targetSolar.addEventListener('targetFound', () => {
           activeTarget = 'solar';
-          
-          // Update Menu for Solar System
           menuTitle.innerText = "The Solar System";
-          icon3D.innerText = "🪐";
-          iconVid.innerText = "🌌";
-          text3D.innerText = "Interactive Galaxy";
-          textVid.innerText = "Watch Planetary Video";
+          icon3D.innerText = "🪐"; iconVid.innerText = "🌌";
+          text3D.innerText = "Interactive Galaxy"; textVid.innerText = "Watch Planetary Video";
 
-          if (!activeExperience) {
-              arMenu.classList.add('visible');
-          } else if (activeExperience === '3d') {
-              wrapSolar.setAttribute('visible', true);
-              activeWrapper = wrapSolar;
-          } else if (activeExperience === 'video') {
-              vidSolarEnt.setAttribute('visible', true);
-              vidAssetSolar.play();
-          }
+          if (!activeExperience) { arMenu.classList.add('visible'); } 
+          else if (activeExperience === '3d') { wrapSolar.setAttribute('visible', true); activeWrapper = wrapSolar; } 
+          else if (activeExperience === 'video') { vidSolarEnt.setAttribute('visible', true); vidAssetSolar.play(); }
+      });
+
+      targetHuman.addEventListener('targetFound', () => {
+          activeTarget = 'human';
+          menuTitle.innerText = "Human Anatomy";
+          icon3D.innerText = "🫀"; iconVid.innerText = "🎬";
+          text3D.innerText = "Interactive 3D Systems"; textVid.innerText = "Watch Anatomy Video";
+
+          if (!activeExperience) { arMenu.classList.add('visible'); } 
+          else if (activeExperience === '3d') { 
+              wrapHuman.setAttribute('visible', true); activeWrapper = wrapHuman; 
+              humanSubMenu.classList.add('visible'); // Show Sub Menu
+          } 
+          else if (activeExperience === 'video') { vidHumanEnt.setAttribute('visible', true); vidAssetHuman.play(); }
+      });
+
+      targetFlower.addEventListener('targetFound', () => {
+          activeTarget = 'flower';
+          menuTitle.innerText = "Flower Anatomy";
+          icon3D.innerText = "🌸"; iconVid.innerText = "🎥";
+          text3D.innerText = "Interactive Botany"; textVid.innerText = "Watch Flower Video";
+
+          if (!activeExperience) { arMenu.classList.add('visible'); } 
+          else if (activeExperience === '3d') { wrapFlower.setAttribute('visible', true); activeWrapper = wrapFlower; } 
+          else if (activeExperience === 'video') { vidFlowerEnt.setAttribute('visible', true); vidAssetFlower.play(); }
       });
 
       // Handle Target Loss (Safety Reset)
@@ -238,13 +298,17 @@
           activeTarget = null;
           activeWrapper = null;
           arMenu.classList.remove('visible');
+          humanSubMenu.classList.remove('visible');
           
-          // Pause videos if playing
           vidAssetTitration.pause();
           vidAssetSolar.pause();
+          vidAssetHuman.pause();
+          vidAssetFlower.pause();
       };
       targetTitration.addEventListener('targetLost', handleTargetLost);
       targetSolar.addEventListener('targetLost', handleTargetLost);
+      targetHuman.addEventListener('targetLost', handleTargetLost);
+      targetFlower.addEventListener('targetLost', handleTargetLost);
 
       // 3. UI BUTTON CLICKS
       btn3D.addEventListener('click', () => {
@@ -252,13 +316,10 @@
           arMenu.classList.remove('visible');
           backBtn.classList.add('visible');
           
-          if (activeTarget === 'titration') {
-              wrapTitration.setAttribute('visible', true);
-              activeWrapper = wrapTitration;
-          } else if (activeTarget === 'solar') {
-              wrapSolar.setAttribute('visible', true);
-              activeWrapper = wrapSolar;
-          }
+          if (activeTarget === 'titration') { wrapTitration.setAttribute('visible', true); activeWrapper = wrapTitration; } 
+          else if (activeTarget === 'solar') { wrapSolar.setAttribute('visible', true); activeWrapper = wrapSolar; }
+          else if (activeTarget === 'human') { wrapHuman.setAttribute('visible', true); activeWrapper = wrapHuman; humanSubMenu.classList.add('visible'); }
+          else if (activeTarget === 'flower') { wrapFlower.setAttribute('visible', true); activeWrapper = wrapFlower; }
       });
 
       btnVideo.addEventListener('click', () => {
@@ -266,32 +327,43 @@
           arMenu.classList.remove('visible');
           backBtn.classList.add('visible');
           
-          if (activeTarget === 'titration') {
-              vidTitrationEnt.setAttribute('visible', true);
-              vidAssetTitration.play();
-          } else if (activeTarget === 'solar') {
-              vidSolarEnt.setAttribute('visible', true);
-              vidAssetSolar.play();
-          }
+          if (activeTarget === 'titration') { vidTitrationEnt.setAttribute('visible', true); vidAssetTitration.play(); } 
+          else if (activeTarget === 'solar') { vidSolarEnt.setAttribute('visible', true); vidAssetSolar.play(); }
+          else if (activeTarget === 'human') { vidHumanEnt.setAttribute('visible', true); vidAssetHuman.play(); }
+          else if (activeTarget === 'flower') { vidFlowerEnt.setAttribute('visible', true); vidAssetFlower.play(); }
       });
+
+      // Human Anatomy Sub-Menu Logic
+      function switchHumanModel(modelId, activeBtn) {
+          setupHuman.setAttribute('src', modelId);
+          [btnAngio, btnMuscle, btnSplanchno].forEach(b => b.classList.remove('active'));
+          activeBtn.classList.add('active');
+      }
+      btnAngio.addEventListener('click', () => switchHumanModel('#human-angio', btnAngio));
+      btnMuscle.addEventListener('click', () => switchHumanModel('#human-muscle', btnMuscle));
+      btnSplanchno.addEventListener('click', () => switchHumanModel('#human-splanchno', btnSplanchno));
 
       // Back to Menu Button
       backBtn.addEventListener('click', () => {
           activeExperience = null;
           activeWrapper = null;
           backBtn.classList.remove('visible');
+          humanSubMenu.classList.remove('visible');
           
           // Hide all wrappers and videos
           wrapTitration.setAttribute('visible', false);
           wrapSolar.setAttribute('visible', false);
+          wrapHuman.setAttribute('visible', false);
+          wrapFlower.setAttribute('visible', false);
+          
           vidTitrationEnt.setAttribute('visible', false);
           vidSolarEnt.setAttribute('visible', false);
+          vidHumanEnt.setAttribute('visible', false);
+          vidFlowerEnt.setAttribute('visible', false);
           
           // Pause all videos
-          vidAssetTitration.pause();
-          vidAssetSolar.pause();
-          vidAssetTitration.currentTime = 0;
-          vidAssetSolar.currentTime = 0;
+          vidAssetTitration.pause(); vidAssetSolar.pause(); vidAssetHuman.pause(); vidAssetFlower.pause();
+          vidAssetTitration.currentTime = 0; vidAssetSolar.currentTime = 0; vidAssetHuman.currentTime = 0; vidAssetFlower.currentTime = 0;
           
           // Reset Titration Drops & Labels
           dropCount = 0;
@@ -300,7 +372,7 @@
               const clearLiquid = mesh.getObjectByName('Liquid_Clear');
               const pinkLiquid = mesh.getObjectByName('Liquid_Pink');
               if (clearLiquid) clearLiquid.visible = true; 
-              if (pinkLiquid) pinkLiquid.visible = false;    
+              if (pinkLiquid) pinkLiquid.visible = false;   
           }
           liquidText.setAttribute('value', 'HCl + Phenolphthalein');
           liquidText.setAttribute('color', '#00BFFF');
@@ -353,7 +425,7 @@
               let currentDist = getDist(e.touches);
               let scaleFactor = currentDist / initialDist;
               let newScale = currentScale * scaleFactor;
-              newScale = Math.max(0.2, Math.min(4, newScale)); 
+              newScale = Math.max(0.05, Math.min(4, newScale)); // Adjusted min scale to 0.05 for large biological models
               
               activeWrapper.object3D.scale.set(newScale, newScale, newScale);
           }
@@ -361,7 +433,6 @@
 
       // 5. TITRATION TAP-TO-ANIMATE LOGIC
       window.addEventListener('click', (e) => {
-        // Only trigger if we are actively viewing the Titration 3D model
         if (activeTarget !== 'titration' || activeExperience !== '3d' || isAnimating || e.target.tagName === 'BUTTON') return; 
         
         dropCount++;
